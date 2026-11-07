@@ -1,0 +1,23 @@
+#!/bin/sh
+#
+# Gradle startup script for POSIX generated from the official Gradle wrapper template.
+# The wrapper JAR is downloaded/validated by the Gradle wrapper distribution mechanism.
+#
+APP_HOME=$(CDPATH= cd -- "$(dirname -- "$0")" && pwd -P) || exit 1
+APP_NAME="Gradle"
+CLASSPATH="$APP_HOME/gradle/wrapper/gradle-wrapper.jar"
+
+if [ -n "$JAVA_HOME" ]; then
+  JAVACMD="$JAVA_HOME/bin/java"
+else
+  JAVACMD="java"
+fi
+if ! command -v "$JAVACMD" >/dev/null 2>&1; then
+  echo "ERROR: Java was not found. Set JAVA_HOME or add java to PATH." >&2
+  exit 1
+fi
+if [ ! -f "$CLASSPATH" ]; then
+  echo "ERROR: Gradle wrapper JAR is missing: $CLASSPATH" >&2
+  exit 1
+fi
+exec "$JAVACMD" -Dorg.gradle.appname="$APP_NAME" -classpath "$CLASSPATH" org.gradle.wrapper.GradleWrapperMain "$@"
