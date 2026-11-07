@@ -11,3 +11,7 @@ Before producing a release AAB:
 6. Generate a signed Android App Bundle with a protected upload key.
 
 Never store API secrets, keystores, or passwords in source control.
+
+
+## Build validation
+A GitHub Actions workflow at `.github/workflows/android-ci.yml` provisions Gradle 8.9 using the official Gradle setup action, generates the Gradle Wrapper with the Gradle wrapper task, and attempts a debug APK build. This should be used to validate the starter project before release signing.
