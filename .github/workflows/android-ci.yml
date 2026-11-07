@@ -15,27 +15,47 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
+
       - uses: actions/setup-java@v4
         with:
           distribution: temurin
           java-version: "17"
-      - uses: android-actions/setup-android@v3
-        with:
-          packages: 'platform-tools platforms;android-35 build-tools;35.0.0'
-      - name: Set up Gradle and validate Wrapper
+
+      - name: Install Android SDK packages
+        shell: bash
+        run: |
+          set -euo pipefail
+          SDKMANAGER="$(find "$ANDROID_HOME/cmdline-tools" -type f -name sdkmanager | sort | tail -n 1)"
+          if [ -z "$SDKMANAGER" ]; then
+            echo "::error::Android sdkmanager was not found on the GitHub runner."
+            exit 1
+          fi
+          yes | "$SDKMANAGER" --licenses >/dev/null || true
+          "$SDKMANAGER" "platform-tools" "platforms;android-35" "build-tools;35.0.0"
+
+      - name: Install Gradle 8.9
         uses: gradle/actions/setup-gradle@v4
         with:
           gradle-version: "8.9"
-      - name: Generate the official Gradle Wrapper
+
+      - name: Generate official Gradle Wrapper
         working-directory: android
-        run: gradle wrapper --gradle-version 8.9 --distribution-type bin
+        run: |
+          gradle wrapper --gradle-version 8.9 --distribution-type bin
+          chmod +x gradlew
+
       - name: Build debug APK
         working-directory: android
         run: ./gradlew --no-daemon assembleDebug
-      - name: Upload debug APK
+
+      - name: Upload debug APK and generated wrapper
         uses: actions/upload-artifact@v4
         with:
-          name: EgeStore-debug-apk
-          path: android/app/build/outputs/apk/debug/*.apk
+          name: EgeStore-debug-build
+          path: |
+            android/app/build/outputs/apk/debug/*.apk
+            android/gradle/wrapper/gradle-wrapper.jar
+            android/gradlew
+            android/gradlew.bat
           if-no-files-found: error
           retention-days: 14
