@@ -1,94 +1,68 @@
-name: EgeStore - İmzalı AAB oluştur ve Google Play'e yükle
+name: EgeStore Android - Build signed AAB
 
 on:
   workflow_dispatch:
     inputs:
-      track:
-        description: "Google Play kanalı"
+      upload_to_play:
+        description: "Google Play'e yükle (yalnızca Play Console ve secrets hazırsa)"
+        type: boolean
         required: true
-        type: choice
-        options:
-          - internal
-          - alpha
-          - beta
-          - production
-        default: internal
+        default: false
 
 permissions:
   contents: read
 
 jobs:
-  build-and-upload:
+  build:
     runs-on: ubuntu-latest
     steps:
-      - name: Kaynak kodunu indir
+      - name: Checkout
         uses: actions/checkout@v4
-
-      - name: Java 17 kur
+      - name: Java 17
         uses: actions/setup-java@v4
         with:
           distribution: temurin
           java-version: "17"
-
-      - name: Android SDK kur
+      - name: Android SDK
         uses: android-actions/setup-android@v3
-
-      - name: Android proje dosyalarını doğrula
-        shell: bash
+      - name: Gradle wrapper doğrula
         run: |
           if [ ! -f android/gradlew ]; then
-            echo "::error::android/gradlew bulunamadı. Önce gerçek Android Gradle projesi eklenmeli."
+            echo "::error::Gradle wrapper script yok. android/gradlew dosyası Android proje kaynağına eklenmeli."
             exit 1
           fi
-          if [ ! -f android/app/build.gradle ] && [ ! -f android/app/build.gradle.kts ]; then
-            echo "::error::android/app Gradle yapılandırması bulunamadı."
-            exit 1
-          fi
-
-      - name: İmzalama anahtarını hazırla
-        shell: bash
+      - name: Keystore decode
+        if: ${{ secrets.ANDROID_KEYSTORE_BASE64 != '' }}
         env:
-          ANDROID_KEYSTORE_BASE64: ${{ secrets.ANDROID_KEYSTORE_BASE64 }}
+          KEYSTORE_B64: ${{ secrets.ANDROID_KEYSTORE_BASE64 }}
         run: |
-          test -n "$ANDROID_KEYSTORE_BASE64" || { echo "::error::ANDROID_KEYSTORE_BASE64 secret eksik."; exit 1; }
-          mkdir -p "$RUNNER_TEMP/signing"
-          echo "$ANDROID_KEYSTORE_BASE64" | base64 --decode > "$RUNNER_TEMP/signing/release.jks"
-          test -s "$RUNNER_TEMP/signing/release.jks"
-          echo "ANDROID_KEYSTORE_PATH=$RUNNER_TEMP/signing/release.jks" >> "$GITHUB_ENV"
-
-      - name: İmzalı Release AAB derle
+          mkdir -p "$RUNNER_TEMP/keys"
+          printf '%s' "$KEYSTORE_B64" | base64 --decode > "$RUNNER_TEMP/keys/upload.jks"
+          echo "KEYSTORE_PATH=$RUNNER_TEMP/keys/upload.jks" >> "$GITHUB_ENV"
+      - name: AAB derle
         working-directory: android
         env:
-          ANDROID_KEYSTORE_PATH: ${{ env.ANDROID_KEYSTORE_PATH }}
-          ANDROID_KEYSTORE_PASSWORD: ${{ secrets.ANDROID_KEYSTORE_PASSWORD }}
-          ANDROID_KEY_ALIAS: ${{ secrets.ANDROID_KEY_ALIAS }}
-          ANDROID_KEY_PASSWORD: ${{ secrets.ANDROID_KEY_PASSWORD }}
+          KEYSTORE_PATH: ${{ env.KEYSTORE_PATH }}
+          KEYSTORE_PASSWORD: ${{ secrets.ANDROID_KEYSTORE_PASSWORD }}
+          KEY_ALIAS: ${{ secrets.ANDROID_KEY_ALIAS }}
+          KEY_PASSWORD: ${{ secrets.ANDROID_KEY_PASSWORD }}
         run: |
-          chmod +x ./gradlew
+          chmod +x gradlew
           ./gradlew --no-daemon bundleRelease
-
-      - name: AAB dosyasını doğrula
-        id: artifact
-        shell: bash
-        run: |
-          AAB="$(find android -type f -path '*/build/outputs/bundle/release/*.aab' -print -quit)"
-          test -n "$AAB" || { echo "::error::Release AAB bulunamadı."; exit 1; }
-          echo "aab=$AAB" >> "$GITHUB_OUTPUT"
-
-      - name: İmzalı AAB dosyasını sakla
+      - name: AAB artifact
         uses: actions/upload-artifact@v4
         with:
           name: EgeStore-release-aab
-          path: ${{ steps.artifact.outputs.aab }}
+          path: android/app/build/outputs/bundle/release/*.aab
           if-no-files-found: error
           retention-days: 30
-
-      - name: Google Play'e yükle
+      - name: Upload to Google Play internal draft
+        if: ${{ inputs.upload_to_play }}
         uses: r0adkll/upload-google-play@v1
         with:
           serviceAccountJsonPlainText: ${{ secrets.PLAY_STORE_SERVICE_ACCOUNT_JSON }}
           packageName: ${{ vars.PLAY_PACKAGE_NAME }}
-          releaseFiles: ${{ steps.artifact.outputs.aab }}
-          track: ${{ inputs.track }}
+          releaseFiles: android/app/build/outputs/bundle/release/*.aab
+          track: internal
           status: draft
           changesNotSentForReview: true
