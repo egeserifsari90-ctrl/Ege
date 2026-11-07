@@ -1,37 +1,25 @@
-# EgeStore native Android release — blocking items
+# EgeStore release status
 
-## Verified repository state
-The repository currently contains release documentation and a workflow only. It does not contain an Android Gradle project, a Gradle wrapper, an Android manifest, or an application module.
+## Implemented prototype
+- Native Android storefront UI.
+- Local product catalog with name, description, price and stock.
+- Add and delete products.
+- Local cart and demo order flow.
+- Product data persisted on this device.
 
-The browser prototype is local-browser-only. It is not a production commerce app and must not be packaged or submitted as if it were one.
+## Not production-ready
+This is a single-device prototype. It has no server, customer accounts, shared inventory, product image upload, real payment processing, fulfillment, delivery tracking, order notifications, or remote admin. Demo order creation does not charge a payment method. Do not accept real customer orders or represent this as a production store.
 
-## Why the release workflow will stop
-The workflow checks for `android/gradlew` and `android/app/build.gradle(.kts)`; neither exists. No valid signed AAB can currently be built.
+## Release requirements
+A signed release AAB requires an owner-controlled upload key and these GitHub Actions secrets:
+- ANDROID_KEYSTORE_BASE64
+- ANDROID_KEYSTORE_PASSWORD
+- ANDROID_KEY_ALIAS
+- ANDROID_KEY_PASSWORD
 
-## Required product work before release
-1. Implement the actual storefront UI and native Android container.
-2. Choose a permanent application ID and versioning scheme.
-3. Build authenticated server-side catalog, inventory, and order services.
-4. Integrate compliant payments for physical goods, shipping, returns, and customer support.
-5. Implement authenticated owner/admin tools and order notifications.
-6. Add privacy controls and accurate Play Console disclosures.
-7. Test on physical Android devices and resolve release blockers.
+Play Console upload additionally requires:
+- PLAY_STORE_SERVICE_ACCOUNT_JSON secret
+- PLAY_PACKAGE_NAME variable set to com.egestore.app
+- An eligible Play Console account owner to register the app and authorize the service account.
 
-## Required owner-controlled GitHub Actions secrets
-After creating a real Android project and generating its upload keystore, add:
-- `ANDROID_KEYSTORE_BASE64`
-- `ANDROID_KEYSTORE_PASSWORD`
-- `ANDROID_KEY_ALIAS`
-- `ANDROID_KEY_PASSWORD`
-- `PLAY_STORE_SERVICE_ACCOUNT_JSON`
-
-Add repository variable:
-- `PLAY_PACKAGE_NAME`: exact Android application ID registered in Play Console.
-
-Never commit keystores, passwords, service-account JSON, payment credentials, or customer data to Git.
-
-## Safe release sequence
-Run the workflow against the internal testing track first. Review the uploaded draft in Play Console and test with internal testers. Do not select production until the app, declarations, and operational services are ready.
-
-## Current status
-No signed AAB has been built, no Play Console upload has occurred, and no app has been submitted for Google review.
+Never commit keys, credentials, payment secrets, or customer information to Git. The Debug APK is not a Play production release.
